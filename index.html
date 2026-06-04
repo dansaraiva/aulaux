@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetShop Gestão</title>
+    <!-- Importando Tailwind CSS para estilização rápida e moderna -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Importando FontAwesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Configuração de cores personalizadas do Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos adicionais para animações suaves */
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 200ms ease-out, transform 200ms ease-out;
+        }
+        .toast-enter {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        .toast-enter-active {
+            transform: translateY(0);
+            opacity: 1;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Ocultar scrollbar mantendo a funcionalidade */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Navegação Superior -->
+    <nav class="bg-brand-600 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-paw text-2xl"></i>
+                    <span class="font-bold text-xl tracking-tight">PetManager</span>
+                </div>
+                <div class="flex space-x-4">
+                    <button onclick="switchTab('pets')" id="tab-pets" class="px-3 py-2 rounded-md text-sm font-medium bg-brand-900 transition-colors">
+                        <i class="fa-solid fa-dog mr-1"></i> Pets
+                    </button>
+                    <button onclick="switchTab('consultations')" id="tab-consultations" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-brand-500 transition-colors">
+                        <i class="fa-regular fa-calendar-check mr-1"></i> Agendamentos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Área de Conteúdo Principal -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        
+        <!-- ==================== VIEW: PETS ==================== -->
+        <div id="view-pets" class="block space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Cadastro de Pets</h1>
+                    <p class="text-sm text-slate-500">Gerencie os pets e seus respectivos tutores.</p>
+                </div>
+                <button onclick="openPetModal()" class="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 transition-colors">
+                    <i class="fa-solid fa-plus"></i> Novo Pet
+                </button>
+            </div>
+
+            <!-- Grid de Pets -->
+            <div id="pets-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Os cards de pets serão inseridos aqui pelo JavaScript -->
+            </div>
+            
+            <!-- Estado Vazio Pets -->
+            <div id="pets-empty" class="hidden flex flex-col items-center justify-center py-12 bg-white rounded-xl shadow-sm border border-slate-200">
+                <i class="fa-solid fa-cat text-4xl text-slate-300 mb-3"></i>
+                <h3 class="text-lg font-medium text-slate-900">Nenhum pet cadastrado</h3>
+                <p class="text-slate-500 text-sm mt-1">Adicione um novo pet para começar.</p>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW: AGENDAMENTOS ==================== -->
+        <div id="view-consultations" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Agendamentos de Consultas</h1>
+                    <p class="text-sm text-slate-500">Controle as visitas e consultas dos pets.</p>
+                </div>
+                <button onclick="openConsultationModal()" class="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 transition-colors">
+                    <i class="fa-solid fa-calendar-plus"></i> Nova Consulta
+                </button>
+            </div>
+
+            <!-- Lista de Consultas -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto no-scrollbar">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Data / Hora</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Pet / Tutor</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Motivo</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="consultations-table-body" class="bg-white divide-y divide-slate-200">
+                            <!-- Linhas de consulta serão inseridas aqui -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Estado Vazio Consultas -->
+            <div id="consultations-empty" class="hidden flex flex-col items-center justify-center py-12 bg-white rounded-xl shadow-sm border border-slate-200">
+                <i class="fa-regular fa-calendar-xmark text-4xl text-slate-300 mb-3"></i>
+                <h3 class="text-lg font-medium text-slate-900">Nenhuma consulta agendada</h3>
+                <p class="text-slate-500 text-sm mt-1">Clique em "Nova Consulta" para agendar uma visita.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ==================== MODAL: FORMULÁRIO DE PET ==================== -->
+    <div id="pet-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Fundo escuro -->
+            <div class="fixed inset-0 bg-slate-900 bg-opacity-50 transition-opacity" aria-hidden="true" onclick="closeModals()"></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <!-- Conteúdo do Modal -->
+            <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <form id="pet-form" onsubmit="handlePetSubmit(event)">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="flex justify-between items-center mb-5">
+                            <h3 class="text-lg leading-6 font-semibold text-slate-900" id="pet-modal-title">Adicionar Novo Pet</h3>
+                            <button type="button" onclick="closeModals()" class="text-slate-400 hover:text-slate-500">
+                                <i class="fa-solid fa-xmark text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <input type="hidden" id="pet-id">
+                        
+                        <div class="space-y-4">
+                            <!-- Informações do Pet -->
+                            <h4 class="text-sm font-medium text-brand-600 uppercase tracking-wider border-b pb-1">Dados do Pet</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="col-span-2 sm:col-span-1">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Nome do Pet *</label>
+                                    <input type="text" id="pet-name" required class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                                </div>
+                                <div class="col-span-2 sm:col-span-1">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Espécie *</label>
+                                    <select id="pet-species" required class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white">
+                                        <option value="">Selecione...</option>
+                                        <option value="Cachorro">Cachorro</option>
+                                        <option value="Gato">Gato</option>
+                                        <option value="Pássaro">Pássaro</option>
+                                        <option value="Roedor">Roedor</option>
+                                        <option value="Outro">Outro</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-2 sm:col-span-1">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Raça</label>
+                                    <input type="text" id="pet-breed" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                                </div>
+                                <div class="col-span-2 sm:col-span-1">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Idade</label>
+                                    <input type="text" id="pet-age" placeholder="Ex: 2 anos, 5 meses..." class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                                </div>
+                            </div>
+
+                            <!-- Informações do Tutor -->
+                            <h4 class="text-sm font-medium text-brand-600 uppercase tracking-wider border-b pb-1 mt-6">Dados do Tutor</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="col-span-2">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Nome do Tutor *</label>
+                                    <input type="text" id="tutor-name" required class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Telefone (WhatsApp) *</label>
+                                    <input type="tel" id="tutor-phone" required placeholder="(00) 00000-0000" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-4 py-3 sm:px-6 flex justify-end gap-3 rounded-b-xl border-t border-slate-200">
+                        <button type="button" onclick="closeModals()" class="px-4 py-2 bg-white border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 font-medium shadow-sm transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-brand-600 border border-transparent rounded-md text-white hover:bg-brand-500 font-medium shadow-sm transition-colors">
+                            Salvar Pet
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: FORMULÁRIO DE AGENDAMENTO ==================== -->
+    <div id="consultation-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-slate-900 bg-opacity-50 transition-opacity" aria-hidden="true" onclick="closeModals()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <form id="consultation-form" onsubmit="handleConsultationSubmit(event)">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="flex justify-between items-center mb-5">
+                            <h3 class="text-lg leading-6 font-semibold text-slate-900" id="consult-modal-title">Agendar Consulta</h3>
+                            <button type="button" onclick="closeModals()" class="text-slate-400 hover:text-slate-500">
+                                <i class="fa-solid fa-xmark text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <input type="hidden" id="consult-id">
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Selecione o Pet *</label>
+                                <select id="consult-pet" required class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white">
+                                    <!-- Opções populadas pelo JS -->
+                                </select>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Data *</label>
+                                    <input type="date" id="consult-date" required class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Horário *</label>
+                                    <input type="time" id="consult-time" required class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Motivo da Visita *</label>
+                                <textarea id="consult-reason" required rows="3" placeholder="Ex: Vacinação, Banho e Tosa, Consulta de rotina..." class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 px-4 py-3 sm:px-6 flex justify-end gap-3 rounded-b-xl border-t border-slate-200">
+                        <button type="button" onclick="closeModals()" class="px-4 py-2 bg-white border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 font-medium shadow-sm transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-brand-600 border border-transparent rounded-md text-white hover:bg-brand-500 font-medium shadow-sm transition-colors">
+                            Confirmar Agendamento
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== CONTAINER DE NOTIFICAÇÕES (TOAST) ==================== -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[60] flex flex-col gap-2"></div>
+
+    <!-- Lógica JavaScript -->
+    <script>
+        // ==========================================
+        // ESTADO DA APLICAÇÃO (IN-MEMORY)
+        // ==========================================
+        
+        // Dados Iniciais simulados para demonstração
+        let pets = [
+            {
+                id: '1',
+                name: 'Rex',
+                species: 'Cachorro',
+                breed: 'Golden Retriever',
+                age: '3 anos',
+                tutorName: 'João Silva',
+                tutorPhone: '(11) 98765-4321'
+            },
+            {
+                id: '2',
+                name: 'Mimi',
+                species: 'Gato',
+                breed: 'Siamês',
+                age: '1 ano e 5 meses',
+                tutorName: 'Maria Oliveira',
+                tutorPhone: '(11) 91234-5678'
+            }
+        ];
+
+        let consultations = [
+            {
+                id: 'c1',
+                petId: '1',
+                date: '2026-06-10',
+                time: '14:30',
+                reason: 'Vacina Múltipla (V10)'
+            }
+        ];
+
+        // ==========================================
+        // NAVEGAÇÃO DE ABAS
+        // ==========================================
+        function switchTab(tabId) {
+            // Atualizar visibilidade das views
+            document.getElementById('view-pets').classList.toggle('hidden', tabId !== 'pets');
+            document.getElementById('view-consultations').classList.toggle('hidden', tabId !== 'consultations');
+
+            // Atualizar estilos dos botões de aba
+            const btnPets = document.getElementById('tab-pets');
+            const btnConsultations = document.getElementById('tab-consultations');
+
+            if (tabId === 'pets') {
+                btnPets.classList.replace('hover:bg-brand-500', 'bg-brand-900');
+                btnPets.classList.add('bg-brand-900');
+                
+                btnConsultations.classList.remove('bg-brand-900');
+                btnConsultations.classList.add('hover:bg-brand-500');
+                
+                renderPets();
+            } else {
+                btnConsultations.classList.replace('hover:bg-brand-500', 'bg-brand-900');
+                btnConsultations.classList.add('bg-brand-900');
+                
+                btnPets.classList.remove('bg-brand-900');
+                btnPets.classList.add('hover:bg-brand-500');
+                
+                renderConsultations();
+            }
+        }
+
+        // ==========================================
+        // LÓGICA DE PETS (CRUD)
+        // ==========================================
+        
+        function renderPets() {
+            const grid = document.getElementById('pets-grid');
+            const emptyState = document.getElementById('pets-empty');
+            
+            grid.innerHTML = '';
+            
+            if (pets.length === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            grid.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            pets.forEach(pet => {
+                // Selecionar ícone baseado na espécie
+                let iconClass = 'fa-paw';
+                if(pet.species === 'Cachorro') iconClass = 'fa-dog';
+                if(pet.species === 'Gato') iconClass = 'fa-cat';
+                if(pet.species === 'Pássaro') iconClass = 'fa-dove';
+                if(pet.species === 'Roedor') iconClass = 'fa-otter';
+
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-shadow flex flex-col h-full';
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-xl">
+                                <i class="fa-solid ${iconClass}"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 leading-tight">${pet.name}</h3>
+                                <p class="text-sm text-slate-500">${pet.species} ${pet.breed ? '• ' + pet.breed : ''}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="editPet('${pet.id}')" class="text-slate-400 hover:text-brand-600 transition-colors" title="Editar">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deletePet('${pet.id}')" class="text-slate-400 hover:text-red-600 transition-colors" title="Excluir">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-auto pt-4 border-t border-slate-100 text-sm space-y-2">
+                        <div class="flex items-center gap-2 text-slate-600">
+                            <i class="fa-regular fa-user w-4 text-center"></i>
+                            <span><span class="font-medium">Tutor:</span> ${pet.tutorName}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-slate-600">
+                            <i class="fa-solid fa-phone w-4 text-center"></i>
+                            <span>${pet.tutorPhone}</span>
+                        </div>
+                        ${pet.age ? `
+                        <div class="flex items-center gap-2 text-slate-600">
+                            <i class="fa-regular fa-calendar w-4 text-center"></i>
+                            <span><span class="font-medium">Idade:</span> ${pet.age}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function openPetModal(petId = null) {
+            const form = document.getElementById('pet-form');
+            form.reset();
+            document.getElementById('pet-id').value = '';
+            document.getElementById('pet-modal-title').innerText = 'Adicionar Novo Pet';
+
+            if (petId) {
+                const pet = pets.find(p => p.id === petId);
+                if (pet) {
+                    document.getElementById('pet-modal-title').innerText = 'Editar Pet';
+                    document.getElementById('pet-id').value = pet.id;
+                    document.getElementById('pet-name').value = pet.name;
+                    document.getElementById('pet-species').value = pet.species;
+                    document.getElementById('pet-breed').value = pet.breed || '';
+                    document.getElementById('pet-age').value = pet.age || '';
+                    document.getElementById('tutor-name').value = pet.tutorName;
+                    document.getElementById('tutor-phone').value = pet.tutorPhone;
+                }
+            }
+            
+            const modal = document.getElementById('pet-modal');
+            modal.classList.remove('hidden');
+            // Animação simples
+            const content = modal.querySelector('.transform');
+            content.classList.add('modal-enter-active');
+        }
+
+        function handlePetSubmit(e) {
+            e.preventDefault();
+            
+            const petId = document.getElementById('pet-id').value;
+            const newPet = {
+                id: petId || Date.now().toString(),
+                name: document.getElementById('pet-name').value,
+                species: document.getElementById('pet-species').value,
+                breed: document.getElementById('pet-breed').value,
+                age: document.getElementById('pet-age').value,
+                tutorName: document.getElementById('tutor-name').value,
+                tutorPhone: document.getElementById('tutor-phone').value
+            };
+
+            if (petId) {
+                // Atualizar
+                const index = pets.findIndex(p => p.id === petId);
+                if (index !== -1) pets[index] = newPet;
+                showToast('Pet atualizado com sucesso!', 'success');
+            } else {
+                // Criar
+                pets.push(newPet);
+                showToast('Pet cadastrado com sucesso!', 'success');
+            }
+
+            closeModals();
+            renderPets();
+        }
+
+        function editPet(id) {
+            openPetModal(id);
+        }
+
+        function deletePet(id) {
+            // Verificar se o pet tem agendamentos pendentes
+            const hasConsultations = consultations.some(c => c.petId === id);
+            
+            if (hasConsultations) {
+                showToast('Não é possível excluir. O pet possui consultas agendadas.', 'error');
+                return;
+            }
+
+            // Ao invés do window.confirm padrão, usar um comportamento direto para este protótipo, 
+            // mas com aviso toast caso queiramos adicionar modal de confirmação no futuro.
+            pets = pets.filter(p => p.id !== id);
+            renderPets();
+            showToast('Pet excluído do sistema.', 'info');
+        }
+
+
+        // ==========================================
+        // LÓGICA DE AGENDAMENTOS (CRUD)
+        // ==========================================
+        
+        function renderConsultations() {
+            const tbody = document.getElementById('consultations-table-body');
+            const tableContainer = tbody.closest('.overflow-hidden');
+            const emptyState = document.getElementById('consultations-empty');
+            
+            tbody.innerHTML = '';
+
+            // Ordenar por data mais próxima
+            const sortedConsultations = [...consultations].sort((a, b) => {
+                const dateA = new Date(a.date + 'T' + a.time);
+                const dateB = new Date(b.date + 'T' + b.time);
+                return dateA - dateB;
+            });
+
+            if (sortedConsultations.length === 0) {
+                tableContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            tableContainer.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            sortedConsultations.forEach(consult => {
+                const pet = pets.find(p => p.id === consult.petId);
+                // Se o pet foi deletado e ficou a consulta (embora bloqueemos isso na deleção), pular ou mostrar fallback
+                if (!pet) return;
+
+                // Formatar Data (YYYY-MM-DD para DD/MM/YYYY)
+                const [year, month, day] = consult.date.split('-');
+                const formattedDate = `${day}/${month}/${year}`;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-slate-900 flex items-center gap-2">
+                            <i class="fa-regular fa-calendar text-brand-500"></i> ${formattedDate}
+                        </div>
+                        <div class="text-sm text-slate-500 flex items-center gap-2 mt-1">
+                            <i class="fa-regular fa-clock text-slate-400"></i> ${consult.time}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-bold text-slate-900">${pet.name} <span class="text-xs font-normal text-slate-500">(${pet.species})</span></div>
+                        <div class="text-sm text-slate-500 mt-1"><i class="fa-regular fa-user mr-1 text-xs"></i>${pet.tutorName}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-slate-900 line-clamp-2" title="${consult.reason}">${consult.reason}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="deleteConsultation('${consult.id}')" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded transition-colors">
+                            <i class="fa-solid fa-xmark mr-1"></i> Cancelar
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openConsultationModal() {
+            if (pets.length === 0) {
+                showToast('Cadastre pelo menos um pet antes de agendar consultas.', 'error');
+                // Redirecionar para aba de pets
+                switchTab('pets');
+                return;
+            }
+
+            const form = document.getElementById('consultation-form');
+            form.reset();
+            document.getElementById('consult-id').value = '';
+            
+            // Popular select de pets
+            const petSelect = document.getElementById('consult-pet');
+            petSelect.innerHTML = '<option value="">Selecione um Pet...</option>';
+            pets.forEach(pet => {
+                const option = document.createElement('option');
+                option.value = pet.id;
+                option.textContent = `${pet.name} (Tutor: ${pet.tutorName})`;
+                petSelect.appendChild(option);
+            });
+
+            // Setar data mínima como hoje
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('consult-date').min = today;
+
+            const modal = document.getElementById('consultation-modal');
+            modal.classList.remove('hidden');
+        }
+
+        function handleConsultationSubmit(e) {
+            e.preventDefault();
+            
+            const newConsultation = {
+                id: Date.now().toString(),
+                petId: document.getElementById('consult-pet').value,
+                date: document.getElementById('consult-date').value,
+                time: document.getElementById('consult-time').value,
+                reason: document.getElementById('consult-reason').value
+            };
+
+            consultations.push(newConsultation);
+            showToast('Consulta agendada com sucesso!', 'success');
+            
+            closeModals();
+            renderConsultations();
+        }
+
+        function deleteConsultation(id) {
+            consultations = consultations.filter(c => c.id !== id);
+            renderConsultations();
+            showToast('Agendamento cancelado.', 'info');
+        }
+
+        // ==========================================
+        // UTILITÁRIOS GERAIS
+        // ==========================================
+
+        function closeModals() {
+            document.getElementById('pet-modal').classList.add('hidden');
+            document.getElementById('consultation-modal').classList.add('hidden');
+        }
+
+        // Sistema Simples de Toast Notification
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            
+            const toast = document.createElement('div');
+            toast.className = `flex items-center p-4 w-full max-w-xs text-slate-700 bg-white rounded-lg shadow-lg border-l-4 toast-enter-active`;
+            
+            let icon = '';
+            if (type === 'success') {
+                toast.classList.add('border-green-500');
+                icon = '<div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg"><i class="fa-solid fa-check"></i></div>';
+            } else if (type === 'error') {
+                toast.classList.add('border-red-500');
+                icon = '<div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-red-500 bg-red-100 rounded-lg"><i class="fa-solid fa-xmark"></i></div>';
+            } else {
+                toast.classList.add('border-blue-500');
+                icon = '<div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-blue-500 bg-blue-100 rounded-lg"><i class="fa-solid fa-info"></i></div>';
+            }
+
+            toast.innerHTML = `
+                ${icon}
+                <div class="ml-3 text-sm font-medium">${message}</div>
+            `;
+
+            container.appendChild(toast);
+
+            // Remover após 3 segundos
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(100%)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => {
+                    if(container.contains(toast)) container.removeChild(toast);
+                }, 300);
+            }, 3000);
+        }
+
+        // ==========================================
+        // INICIALIZAÇÃO
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Iniciar na aba de Pets
+            renderPets();
+        });
+
+        // Fechar modal no botão ESC
+        document.addEventListener('keydown', function(event){
+            if(event.key === "Escape"){
+                closeModals();
+            }
+        });
+
+    </script>
+</body>
+</html>
